@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GTC Stock</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+:root{--bg:#f6f4ee;--card:#fff;--tx:#1d1d1b;--mu:#6b6a64;--ac:#1f6f43;--ac2:#e8f3ec;--bd:#dcd9cf;--rd:#b3261e;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#151512;--card:#202019;--tx:#f0eee6;--mu:#a09e94;--ac:#58c585;--ac2:#1f2f25;--bd:#35342b;--rd:#ff8a80;color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Devanagari",sans-serif;font-size:16px}
+body{padding-bottom:84px}
+header{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;position:sticky;top:env(safe-area-inset-top,0px);background:var(--bg);z-index:5}
+h1{font-size:19px;margin:0}
+.lang{border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:20px;padding:6px 14px;font-size:14px}
+main{padding:0 14px 14px;max-width:640px;margin:0 auto}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:12px;margin-bottom:10px}
+.nm{font-weight:600}.sub{color:var(--mu);font-size:13px}
+.tot{color:var(--ac);font-weight:700;margin:4px 0 6px}
+.row{display:flex;justify-content:space-between;font-size:15px;padding:3px 0;border-top:1px dashed var(--bd)}
+.row .z{color:var(--mu)}
+input,select,button{font:inherit}
+input,select{width:100%;padding:12px;border:1px solid var(--bd);border-radius:10px;background:var(--card);color:var(--tx);margin:4px 0 8px}
+label{font-size:13px;color:var(--mu)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn{width:100%;padding:14px;border:0;border-radius:12px;background:var(--ac);color:#fff;font-weight:700;font-size:17px}
+html:not([data-theme="light"]) .btn{color:#0b1b11}
+.btn.sm{width:auto;padding:8px 12px;font-size:14px}
+.btn.red{background:transparent;color:var(--rd);border:1px solid var(--rd)}
+.msg{padding:10px;border-radius:10px;margin-bottom:10px;background:var(--ac2);color:var(--ac);font-weight:600}
+.msg.err{background:transparent;border:1px solid var(--rd);color:var(--rd)}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);border-top:1px solid var(--bd);padding-bottom:env(safe-area-inset-bottom,0px)}
+nav button{flex:1;border:0;background:none;color:var(--mu);padding:10px 2px;font-size:12px}
+nav button b{display:block;font-size:20px;font-weight:400}
+nav button.on{color:var(--ac);font-weight:700}
+textarea{width:100%;height:110px;border:1px solid var(--bd);border-radius:10px;background:var(--card);color:var(--tx);padding:8px;font-size:12px}
+.lg{font-size:13px;padding:5px 0;border-top:1px dashed var(--bd)}
+</style>
+</head>
+<body>
+<header><h1>🌾 GTC Stock</h1><button class="lang" id="lb"></button></header>
+<main id="m"></main>
+<nav id="nv"></nav>
+<script>
+/* Firebase config */
+var FIREBASE_CONFIG={
+  apiKey:"AIzaSyB0TiXcl_G76jiphMcQdjg91IKlo3EiyUg",
+  authDomain:"gtc-stock.firebaseapp.com",
+  projectId:"gtc-stock",
+  storageBucket:"gtc-stock.firebasestorage.app",
+  messagingSenderId:"988328293447",
+  appId:"1:988328293447:web:ed58ae3545f9188ad76d62"
+};
+
+var LOC=['shop','g1','g2'];
+var T={en:{search:'Search',inn:'Stock In',out:'Stock Out',move:'Transfer',items:'Items',data:'History',
+shop:'Shop',g1:'Godown 1',g2:'Godown 2',ph:'Type brand or item…',total:'Total',none:'No items yet. Add items first.',
+item:'Item',filter:'Type to find item',loc:'Location',from:'From',to:'To',bags:'Bags',kg:'Extra kg',save:'Save',
+saved:'Saved ✓',low:'Not enough stock here',pick:'Choose an item and quantity',brand:'Brand',prod:'Product (e.g. Basmati)',
+kpb:'Kg in one bag',add:'Add item',del:'Delete',sure:'Delete this item and its stock?',sure2:'Tap again to delete',hist:'Recent entries',
+same:'Choose different locations',opening:'Opening stock in:',iN:'In',oT:'Out',mV:'Moved',empty:'Nothing to show',
+nc:'Cannot connect. Check your internet.',cd:'Shop access code',nm:'Your name',open:'Open',bad:'Enter your name and a code of at least 8 characters',lo:'Log out',who:'Staff',
+live:'● Live, shared',err:'Could not save. You may have view-only access.',wait:'Connecting…'},
+mr:{search:'शोधा',inn:'माल आला',out:'माल गेला',move:'हलवा',items:'माल यादी',data:'इतिहास',
+shop:'दुकान',g1:'गोडाऊन १',g2:'गोडाऊन २',ph:'ब्रँड किंवा माल लिहा…',total:'एकूण',none:'अजून माल नाही. आधी माल जोडा.',
+item:'माल',filter:'माल शोधण्यासाठी लिहा',loc:'ठिकाण',from:'येथून',to:'येथे',bags:'गोणी',kg:'अधिक किलो',save:'सेव्ह करा',
+saved:'सेव्ह झाले ✓',low:'येथे पुरेसा साठा नाही',pick:'माल आणि प्रमाण निवडा',brand:'ब्रँड',prod:'माल (उदा. बासमती)',
+kpb:'एका गोणीत किलो',add:'माल जोडा',del:'काढा',sure:'हा माल आणि त्याचा साठा काढायचा?',sure2:'पुन्हा दाबा',hist:'अलीकडील नोंदी',
+same:'वेगळी ठिकाणे निवडा',opening:'सुरुवातीचा साठा:',iN:'आला',oT:'गेला',mV:'हलवला',empty:'काही नाही',
+nc:'कनेक्ट होऊ शकले नाही. इंटरनेट तपासा.',cd:'दुकानाचा ऍक्सेस कोड',nm:'तुमचे नाव',open:'उघडा',bad:'तुमचे नाव आणि किमान ८ अक्षरांचा कोड लिहा',lo:'लॉग आउट',who:'कर्मचारी',
+live:'● लाईव्ह, शेअर्ड',err:'सेव्ह होऊ शकले नाही. तुमच्याकडे फक्त पाहण्याची परवानगी असू शकते.',wait:'कनेक्ट होत आहे…'}};
+var K='gtc_stock_v1',LG='gtc_lang',lang='en',tab='search',q='',msg='',err=false,db=null,state='wait';
+var items={},tx=[],ST={},dl='';
+try{lang=localStorage.getItem(LG)||'en'}catch(e){}
+function t(k){return T[lang][k]||k}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function arr(){return Object.keys(items).map(function(k){var i=items[k];return{id:k,brand:i.brand,prod:i.prod,kpb:i.kpb}}).sort(function(a,b){return nameOf(a).localeCompare(nameOf(b))})}
+function nameOf(i){return i.brand+' '+i.prod+' ('+i.kpb+' kg)'}
+function fmt(i,kg){var b=Math.floor(kg/i.kpb+1e-9),x=Math.round((kg-b*i.kpb)*100)/100;return b+' '+t('bags')+(x?' + '+x+' kg':'')}
+function get(id,l){return (ST[id]&&ST[id][l])||0}
+function calc(){ST={};tx.forEach(function(e){var s=ST[e.id]=ST[e.id]||{};if(e.y==='iN')s[e.l]=(s[e.l]||0)+e.kg;else if(e.y==='oT')s[e.l]=(s[e.l]||0)-e.kg;else{s[e.l]=(s[e.l]||0)-e.kg;s[e.l2]=(s[e.l2]||0)+e.kg}})}
+function say(s,e){msg=s;err=!!e;render();setTimeout(function(){msg='';render()},2500)}
+function opts(f){return arr().filter(function(i){return !f||nameOf(i).toLowerCase().indexOf(f.toLowerCase())>-1}).map(function(i){return '<option value="'+i.id+'">'+esc(nameOf(i))+'</option>'}).join('')}
+function lopts(sel){return LOC.map(function(l){return '<option value="'+l+'"'+(l===sel?' selected':'')+'>'+t(l)+'</option>'}).join('')}
+function refill(){var s=document.getElementById('it');if(s)s.innerHTML=opts(document.getElementById('f').value)}
+function qty(id){var i=items[id];if(!i)return null;var b=parseFloat(document.getElementById('b').value)||0,k=parseFloat(document.getElementById('k').value)||0;var kg=Math.round((b*i.kpb+k)*100)/100;return kg>0?kg:null}
+function formIn(){var h='<div class="card"><label>'+t('filter')+'</label><input id="f" oninput="refill()"><label>'+t('item')+'</label><select id="it">'+opts('')+'</select>';LOC.forEach(function(l,n){h+='<label><b>'+t(l)+'</b></label><div class="two"><input id="b'+n+'" type="number" inputmode="decimal" min="0" placeholder="'+t('bags')+'"><input id="k'+n+'" type="number" inputmode="decimal" min="0" placeholder="'+t('kg')+'"></div>'});return h+'<button class="btn" onclick="goIn()">'+t('save')+'</button></div>'}
+function goIn(){if(!db)return say(t('nc'),1);var id=document.getElementById('it').value,i=items[id];if(!i)return say(t('pick'),1);var es=[];LOC.forEach(function(l,n){var b=parseFloat(document.getElementById('b'+n).value)||0,k=parseFloat(document.getElementById('k'+n).value)||0,kg=Math.round((b*i.kpb+k)*100)/100;if(kg>0)es.push({id:id,l:l,kg:kg,t:Date.now(),y:'iN'})});if(!es.length)return say(t('pick'),1);Promise.all(es.map(function(e){return push(e)})).then(function(){say(t('saved'))},function(){say(t('err'),1)})}
+function form(type){if(type==='in')return formIn();
+ var h='<div class="card"><label>'+t('filter')+'</label><input id="f" oninput="refill()"><label>'+t('item')+'</label><select id="it">'+opts('')+'</select>';
+ if(type==='move')h+='<div class="two"><div><label>'+t('from')+'</label><select id="l1">'+lopts('g1')+'</select></div><div><label>'+t('to')+'</label><select id="l2">'+lopts('shop')+'</select></div></div>';
+ else h+='<label>'+t('loc')+'</label><select id="l1">'+lopts('shop')+'</select>';
+ h+='<div class="two"><div><label>'+t('bags')+'</label><input id="b" type="number" inputmode="decimal" min="0" placeholder="0"></div><div><label>'+t('kg')+'</label><input id="k" type="number" inputmode="decimal" min="0" placeholder="0"></div></div>';
+ return h+'<button class="btn" onclick="go(\''+type+'\')">'+t('save')+'</button></div>'}
+var fs=null,code='',WHO='';
+function C(n){return fs.collection('shops').doc(code).collection(n)}
+function push(e){e.w=WHO;return C('tx').add(e)}
+function go(type){
+ if(!db)return say(t('nc'),1);
+ var id=document.getElementById('it').value,kg=qty(id);if(!kg)return say(t('pick'),1);
+ var l1=document.getElementById('l1').value,e={id:id,l:l1,kg:kg,t:Date.now(),y:type==='in'?'iN':type==='out'?'oT':'mV'};
+ if(type!=='in'&&get(id,l1)<kg)return say(t('low'),1);
+ if(type==='move'){e.l2=document.getElementById('l2').value;if(e.l2===l1)return say(t('same'),1)}
+ push(e).then(function(){document.getElementById('b').value='';document.getElementById('k').value='';say(t('saved'))},function(){say(t('err'),1)})}
+function vSearch(){return '<input id="s" placeholder="'+t('ph')+'" value="'+esc(q)+'" oninput="q=this.value;list()"><div id="ls"></div>'}
+function list(){
+ var el=document.getElementById('ls');if(!el)return;
+ var a=arr();if(!a.length){el.innerHTML='<div class="card sub">'+t(state==='ok'?'none':state==='off'?'nc':'wait')+'</div>';return}
+ var h='',f=q.toLowerCase();
+ a.filter(function(i){return !f||nameOf(i).toLowerCase().indexOf(f)>-1}).forEach(function(i){
+  var tot=0,rows='';LOC.forEach(function(l){var v=get(i.id,l);tot+=v;rows+='<div class="row"><span>'+t(l)+'</span><span class="'+(v?'':'z')+'">'+(v?fmt(i,v):'—')+'</span></div>'});
+  h+='<div class="card"><div class="nm">'+esc(i.brand)+' '+esc(i.prod)+'</div><div class="sub">'+i.kpb+' kg / '+t('bags')+'</div><div class="tot">'+t('total')+': '+fmt(i,tot)+'</div>'+rows+'</div>'});
+ el.innerHTML=h||'<div class="card sub">'+t('empty')+'</div>'}
+function vItems(){
+ var h='<div class="card"><label>'+t('brand')+'</label><input id="nb"><label>'+t('prod')+'</label><input id="np"><label>'+t('kpb')+'</label><input id="nk" type="number" inputmode="decimal" placeholder="50">';
+ h+='<label>'+t('opening')+'</label><div class="two"><select id="ol">'+lopts('shop')+'</select><input id="ob" type="number" inputmode="decimal" placeholder="'+t('bags')+'"></div><button class="btn" onclick="addItem()">'+t('add')+'</button></div>';
+ arr().forEach(function(i){h+='<div class="card" style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span>'+esc(nameOf(i))+'</span><button class="btn red sm" onclick="delItem(\''+i.id+'\')">'+(dl===i.id?t('sure2'):t('del'))+'</button></div>'});
+ return h}
+function addItem(){
+ if(!db)return say(t('nc'),1);
+ var b=document.getElementById('nb').value.trim(),p=document.getElementById('np').value.trim(),k=parseFloat(document.getElementById('nk').value);
+ if(!b||!k||k<=0)return say(t('pick'),1);
+ var ob=parseFloat(document.getElementById('ob').value)||0,ol=document.getElementById('ol').value,ref=C('items').doc();
+ ref.set({brand:b,prod:p,kpb:k}).then(function(){return ob>0?push({id:ref.id,l:ol,kg:ob*k,t:Date.now(),y:'iN'}):0}).then(function(){['nb','np','nk','ob'].forEach(function(x){document.getElementById(x).value=''});say(t('saved'))},function(){say(t('err'),1)})}
+function delItem(id){if(!db)return;if(dl!==id){dl=id;render();setTimeout(function(){if(dl===id){dl='';render()}},4000);return}dl='';C('items').doc(id).delete().then(function(){render()},function(){say(t('err'),1)})}
+function vData(){
+ var h='<div class="card"><div class="nm">'+t('hist')+'</div>';
+ tx.slice().sort(function(a,b){return b.t-a.t}).slice(0,40).forEach(function(e){var i=items[e.id];if(!i)return;i={brand:i.brand,prod:i.prod,kpb:i.kpb};var d=new Date(e.t);
+  h+='<div class="lg">'+d.toLocaleDateString()+' '+d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})+' · <b>'+t(e.y)+'</b> · '+esc(nameOf(i))+' · '+fmt(i,e.kg)+' · '+t(e.l)+(e.l2?' → '+t(e.l2):'')+(e.w?' · '+esc(e.w):'')+'</div>'});
+ return h+'</div><div class="card sub">'+t('who')+': '+esc(WHO)+' <button class="btn red sm" style="float:right" onclick="logout()">'+t('lo')+'</button></div>'}
+function render(){
+ var m=document.getElementById('m');
+ if(!code||!WHO){m.innerHTML=(msg?'<div class="msg err">'+msg+'</div>':'')+'<div class="card"><label>'+t('nm')+'</label><input id="ln"><label>'+t('cd')+'</label><input id="lc" type="password" autocapitalize="none"><button class="btn" onclick="login()">'+t('open')+'</button></div>';document.getElementById('nv').innerHTML='';document.getElementById('lb').textContent=lang==='en'?'मराठी':'English';return}
+ var h=msg?'<div class="msg'+(err?' err':'')+'">'+msg+'</div>':'';
+ if(state==='ok'&&!msg)h+='<div class="sub" style="margin-bottom:8px">'+t('live')+'</div>';
+ if(tab==='search')h+=vSearch();else if(tab==='in'||tab==='out'||tab==='move')h+=form(tab);else if(tab==='items')h+=vItems();else h+=vData();
+ m.innerHTML=h;if(tab==='search')list();
+ document.getElementById('lb').textContent=lang==='en'?'मराठी':'English';
+ document.documentElement.lang=lang;
+ var N=[['search','🔍'],['in','📥'],['out','📤'],['move','🔁'],['items','📋'],['data','🕘']];
+ document.getElementById('nv').innerHTML=N.map(function(n){return '<button class="'+(tab===n[0]?'on':'')+'" onclick="tab=\''+n[0]+'\';render()"><b>'+n[1]+'</b>'+t(n[0]==='in'?'inn':n[0])+'</button>'}).join('')}
+document.getElementById('lb').onclick=function(){lang=lang==='en'?'mr':'en';try{localStorage.setItem(LG,lang)}catch(e){}render()};
+function onData(){calc();if(tab==='search')list();else if(tab==='data')render()}
+try{code=localStorage.getItem('gtc_code')||'';WHO=localStorage.getItem('gtc_who')||''}catch(e){}
+function login(){var n=document.getElementById('ln').value.trim(),c=document.getElementById('lc').value.trim().toLowerCase();
+ if(!n||c.length<8)return say(t('bad'),1);
+ try{localStorage.setItem('gtc_code',c);localStorage.setItem('gtc_who',n)}catch(e){}code=c;WHO=n;start()}
+function logout(){try{localStorage.removeItem('gtc_code');localStorage.removeItem('gtc_who')}catch(e){}location.reload()}
+function start(){
+ if(!code||!WHO)return render();
+ try{
+  if(!firebase.apps.length){firebase.initializeApp(FIREBASE_CONFIG);fs=firebase.firestore();try{fs.enablePersistence({synchronizeTabs:true}).catch(function(){})}catch(e){}}
+  else fs=firebase.firestore();
+  db=fs;state='ok';render();
+  C('items').onSnapshot(function(s){items={};s.docs.forEach(function(x){items[x.id]=x.data()});onData()},function(){state='off';say(t('nc'),1)});
+  C('tx').onSnapshot(function(s){tx=s.docs.map(function(x){return x.data()});onData()},function(){state='off';say(t('nc'),1)});
+ }catch(e){state='off';say(t('nc'),1)}}
+render();
+start();
+</script>
+</body>
+</html>
